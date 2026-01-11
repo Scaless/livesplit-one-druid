@@ -14,6 +14,8 @@ use livesplit_core::{LayoutEditor, RunEditor, TimerPhase, TimingMethod};
 #[cfg(not(target_os = "macos"))]
 use native_dialog::MessageType;
 
+#[cfg(feature = "auto-splitting")]
+use crate::{autosplitter_editor, AutoSplitterEditorLens};
 use crate::{
     config::or_show_error,
     consts::{
@@ -25,8 +27,6 @@ use crate::{
     HotkeysEditorLens, LayoutEditorLens, MainState, OpenWindow, RunEditorLens,
     WindowSettingsEditorLens, HOTKEY_SYSTEM,
 };
-#[cfg(feature = "auto-splitting")]
-use crate::{autosplitter_editor, AutoSplitterEditorLens};
 
 struct WithMenu<T> {
     // device: Device,
@@ -318,8 +318,11 @@ impl<T: Widget<MainState>> Widget<MainState> for WithMenu<T> {
                                 ),
                             )
                             .entry(
+                                #[cfg(feature = "auto-splitting")]
                                 MenuItem::new("Edit Auto-splitter Settings...")
                                     .command(CONTEXT_MENU_EDIT_AUTOSPLITTER_SETTINGS),
+                                #[cfg(not(feature = "auto-splitting"))]
+                                MenuItem::new("Auto-splitter settings unavailable").enabled(false),
                             )
                             .separator()
                             .entry(control_menu)
