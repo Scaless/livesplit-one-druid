@@ -1,11 +1,15 @@
-use std::{rc::Rc, sync::Arc, time::{Duration, Instant}};
+use std::{
+    rc::Rc,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use druid::{
     commands::{self, CLOSE_WINDOW},
     lens::Identity,
     widget::{Button, Controller, Flex, Label, List, ListIter, Scroll, Switch},
-    Data, Env, Event, EventCtx, LensExt, LifeCycle, LifeCycleCtx, Point, RenderContext,
-    TimerToken, Widget, WidgetExt, WindowConfig, WindowId, WindowLevel, WindowSizePolicy,
+    Data, Env, Event, EventCtx, LensExt, LifeCycle, LifeCycleCtx, Point, RenderContext, TimerToken,
+    Widget, WidgetExt, WindowConfig, WindowId, WindowLevel, WindowSizePolicy,
 };
 use livesplit_core::{
     auto_splitting::{
@@ -111,7 +115,9 @@ fn build_rows(widgets: &[SettingsWidget], settings_map: Option<&SettingsMap>) ->
             WidgetKind::Title { heading_level } => {
                 current_heading_level = Some(*heading_level);
                 (
-                    SettingRowValue::Title { heading_level: *heading_level },
+                    SettingRowValue::Title {
+                        heading_level: *heading_level,
+                    },
                     *heading_level,
                 )
             }
@@ -127,7 +133,10 @@ fn build_rows(widgets: &[SettingsWidget], settings_map: Option<&SettingsMap>) ->
                 let indent = current_heading_level.map_or(0, |h| h + 1);
                 (SettingRowValue::Bool(current), indent)
             }
-            WidgetKind::Choice { default_option_key, options } => {
+            WidgetKind::Choice {
+                default_option_key,
+                options,
+            } => {
                 let choice_options: Vec<ChoiceOption> = options
                     .iter()
                     .map(|opt| ChoiceOption {
@@ -287,12 +296,9 @@ impl<W: Widget<State>> Controller<State, W> for SyncController {
 }
 
 fn settings_editor() -> impl Widget<State> {
-    Scroll::new(
-        List::new(setting_row_widget)
-            .padding(MARGIN),
-    )
-    .vertical()
-    .expand_height()
+    Scroll::new(List::new(setting_row_widget).padding(MARGIN))
+        .vertical()
+        .expand_height()
 }
 
 /// Controller that shows a tooltip when hovering over a setting row.
@@ -506,15 +512,12 @@ fn setting_value_widget() -> impl Widget<SettingRow> {
                 // Title rows don't have a value widget, but this is needed for exhaustiveness
                 Box::new(druid::widget::SizedBox::empty())
             }
-            SettingRowValue::Bool(_) => Box::new(
-                Switch::new()
-                    .lens(Identity.map(
-                        |row: &SettingRow| matches!(row.value, SettingRowValue::Bool(true)),
-                        |row: &mut SettingRow, val: bool| {
-                            row.value = SettingRowValue::Bool(val);
-                        },
-                    )),
-            ),
+            SettingRowValue::Bool(_) => Box::new(Switch::new().lens(Identity.map(
+                |row: &SettingRow| matches!(row.value, SettingRowValue::Bool(true)),
+                |row: &mut SettingRow, val: bool| {
+                    row.value = SettingRowValue::Bool(val);
+                },
+            ))),
             SettingRowValue::Choice { options, .. } => {
                 let options_clone: Arc<Vec<ChoiceOption>> = options.clone();
                 Box::new(
@@ -528,7 +531,8 @@ fn setting_value_widget() -> impl Widget<SettingRow> {
                                 }
                             },
                             move |row: &mut SettingRow, val: usize| {
-                                if let SettingRowValue::Choice { current, options } = &mut row.value {
+                                if let SettingRowValue::Choice { current, options } = &mut row.value
+                                {
                                     if val < options.len() {
                                         *current = val;
                                     }
@@ -558,21 +562,27 @@ fn setting_value_widget() -> impl Widget<SettingRow> {
                     })
                     .on_click(move |_ctx, row: &mut SettingRow, _env| {
                         // Get current path for starting directory
-                        let current_path = if let SettingRowValue::FileSelect { path, .. } = &row.value {
-                            if path.is_empty() {
-                                None
+                        let current_path =
+                            if let SettingRowValue::FileSelect { path, .. } = &row.value {
+                                if path.is_empty() {
+                                    None
+                                } else {
+                                    std::path::Path::new(path.as_ref())
+                                        .parent()
+                                        .map(|p| p.to_path_buf())
+                                }
                             } else {
-                                std::path::Path::new(path.as_ref()).parent().map(|p| p.to_path_buf())
-                            }
-                        } else {
-                            None
-                        };
+                                None
+                            };
 
                         // Show file dialog with filters
                         let result = show_file_dialog(&filters_clone, current_path.as_deref());
 
                         if let Some(path) = result {
-                            if let SettingRowValue::FileSelect { path: ref mut p, .. } = &mut row.value {
+                            if let SettingRowValue::FileSelect {
+                                path: ref mut p, ..
+                            } = &mut row.value
+                            {
                                 *p = path.to_string_lossy().into();
                             }
                         }
@@ -585,7 +595,10 @@ fn setting_value_widget() -> impl Widget<SettingRow> {
 }
 
 /// Show a file dialog with the given filters. Returns the selected path, or None if cancelled.
-fn show_file_dialog(filters: &[FileFilter], start_dir: Option<&std::path::Path>) -> Option<std::path::PathBuf> {
+fn show_file_dialog(
+    filters: &[FileFilter],
+    start_dir: Option<&std::path::Path>,
+) -> Option<std::path::PathBuf> {
     // Collect all extensions from all filters into a single list
     let mut all_extensions: Vec<String> = Vec::new();
 
@@ -593,7 +606,10 @@ fn show_file_dialog(filters: &[FileFilter], start_dir: Option<&std::path::Path>)
         match filter {
             FileFilter::Name { pattern, .. } => {
                 // Extract extensions from the pattern (e.g., "*.txt *.log" -> ["txt", "log"])
-                for ext in pattern.split_whitespace().filter_map(|p| p.strip_prefix("*.")) {
+                for ext in pattern
+                    .split_whitespace()
+                    .filter_map(|p| p.strip_prefix("*."))
+                {
                     if !all_extensions.contains(&ext.to_string()) {
                         all_extensions.push(ext.to_string());
                     }
